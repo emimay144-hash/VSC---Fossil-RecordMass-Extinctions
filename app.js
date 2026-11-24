@@ -190,10 +190,10 @@
   const els = {};
   function cacheEls() {
     [
-      'reset-all','ecosystem-select','ecosystem-description','ecosystem-traits',
+      'reset-all','ecosystem-select','ecosystem-preview','ecosystem-description','ecosystem-traits',
       'three-root','layer-list','layer-details','attempt-status','boundary-choices','boundary-feedback',
-      'factor-select','factor-description','rate-slider','severity-slider','rate-value','severity-value','rate-label','severity-label',
-      'run-simulation','landscape-viz','indicator-viz','viz-status','latest-result','run-comparison'
+      'factor-select','factor-description','rate-slider','severity-slider','rate-value','severity-value','rate-label','severity-label','rate-gauge','severity-gauge',
+      'run-simulation','landscape-viz','sim-timeline','indicator-viz','viz-status','latest-result','run-comparison'
     ].forEach(id => els[id] = document.getElementById(id));
   }
 
@@ -240,6 +240,38 @@
     const above = eco.layers[i + 1];
     return `Between ${below.name} and ${above.name}`;
   }
+
+  function levelScore(label) {
+    const l = String(label || '').toLowerCase();
+    if (l === 'none') return 0;
+    if (l === 'very low') return 15;
+    if (l === 'low') return 30;
+    if (l === 'medium') return 55;
+    if (l === 'high') return 75;
+    if (l === 'very high') return 100;
+    return 50;
+  }
+
+  function renderMeter(label, level) {
+    const pct = levelScore(level);
+    return `<div class="meter-row"><span class="meter-label">${esc(label)}</span><div class="meter-track" aria-hidden="true"><div class="meter-fill" style="width:${pct}%"></div></div><span class="meter-value">${esc(level)} (${pct}%)</span></div>`;
+  }
+
+  function renderEcosystemPreview() {
+    const eco = currentEcosystem;
+    const f = FACTORS[eco.defaultFactor];
+    const sceneBg = (f && f.landscape && f.landscape.calm) ? f.landscape.calm : 'linear-gradient(#9fd3ff 0 45%, #7ec96d 45% 70%, #bfa77a 70% 100%)';
+    const legend = eco.species.map(sp => `<span class="legend-chip"><span class="legend-swatch" style="background:${esc(sp.color)}" aria-hidden="true">•</span><span>${esc(sp.name)}</span></span>`).join('');
+    els['ecosystem-preview'].innerHTML = `
+      <div class="eco-scene-cue" style="background:${sceneBg}"><span>${esc(eco.name)} visual preview</span></div>
+      <div class="layer-evidence-visual">
+        <div><strong>Starting biodiversity:</strong> ${eco.species.length} species groups</div>
+        <div><strong>Layers to inspect:</strong> ${eco.layers.length} (oldest at bottom, youngest at top)</div>
+      </div>
+      <div><strong>Species/fossil legend</strong> (icons and colours; labels provided)</div>
+      <div class="legend-grid" aria-label="Species legend">${legend}</div>
+    `;
+  }
   function initEcosystemSelect() {
     els['ecosystem-select'].innerHTML = ECOSYSTEMS.map(e => `<option value="${e.id}">${esc(e.name)}</option>`).join('');
     els['ecosystem-select'].addEventListener('change', () => {
@@ -259,6 +291,11 @@
     runHistory = [];
     els['ecosystem-description'].textContent = eco.description;
     els['ecosystem-traits'].textContent = eco.traits;
+    if (els['sim-timeline']) renderSimTimeline(null);
+    els['landscape-viz'].innerHTML = '<p class="empty-state">Run an automatic visualisation to see the changing landscape.</p>';
+    els['indicator-viz'].innerHTML = '';
+    els['viz-status'].textContent = '';
+    renderEcosystemPreview();
     renderFactorSelect();
     renderAll();
   }
@@ -280,13 +317,32 @@
 
   function renderLayerList() {
     const eco = currentEcosystem;
-    const items = eco.layers.map((layer, idx) => ({ layer, idx })).reverse();
-    els['layer-list'].innerHTML = items.map(({ layer, idx }) => {
+    const items = eco.layers.map((layer, idx) => ({ layer, idx })).reverse(); // youngest/top first in UI, oldest/bottom last
+    els['layer-list'].innerHTML = items.map(({ layer, idx }, visualPos) => {
       const selected = idx === selectedLayerIndex;
-      return `<button type="button" class="layer-item ${selected ? 'selected' : ''}" role="listitem" data-index="${idx}" aria-pressed="${selected}">
-        <span><strong>${esc(layer.name)}</strong><br><span class="layer-meta">${esc(layer.age)} · ${esc(layer.summary)}</span></span>
-        <span class="layer-meta">Abundance: ${esc(layer.abundanceLabel)}<br>Diversity: ${esc(layer.diversityLabel)}</span>
-      </button>`;
+      const stats = layerStats(layer, eco);
+      const meters = `<div class="layer-evidence-visual">${renderMeter('Abundance', layer.abundanceLabel)}${renderMeter('Diversity', layer.diversityLabel)}</div>`;
+      const gapBelowIdx = idx - 1; // boundary between idx-1 (below, older) and idx (above, younger)
+      let gapHtml = '';
+      if (visualPos < items.length - 1) {
+        const isChoice = selectedBoundaryChoice === gapBelowIdx;
+        const isCorrect = boundaryResolved && eco.correctBoundaryChoices.includes(gapBelowIdx);
+        const isRevealedWrong = boundaryResolved && isChoice && !eco.correctBoundaryChoices.includes(gapBelowIdx);
+        const marker = isCorrect ? '✓ boundary evidence' : (isRevealedWrong ? '✕ your mark' : (isChoice ? '● your mark' : 'tap boundary strip below'));
+        gapHtml = `<div class="boundary-gap" aria-hidden="true"><span class="boundary-gap-marker">${marker}</span></div>`;
+      }
+      return `<div class="layer-card-visual" role="listitem">
+        <button type="button" class="layer-item ${selected ? 'selected' : ''}" data-index="${idx}" aria-pressed="${selected}">
+          <span>
+            <strong>${esc(layer.name)}</strong> ${selected ? '<span class="selected-marker">• inspecting</span>' : ''}<br>
+            <span class="layer-meta">${esc(layer.age)}</span><br>
+            <span class="layer-meta">${esc(layer.summary)}</span>
+            ${meters}
+          </span>
+          <span class="layer-meta">Visible groups: ${stats.diversity}/${eco.species.length}</span>
+        </button>
+        ${gapHtml}
+      </div>`;
     }).join('');
     els['layer-list'].querySelectorAll('.layer-item').forEach(btn => {
       btn.addEventListener('click', () => {
@@ -395,16 +451,20 @@
     els['boundary-choices'].innerHTML = eco.layers.slice(0, -1).map((layer, i) => {
       const label = formatBoundaryChoice(i, eco);
       const selected = selectedBoundaryChoice === i;
+      const correctChoice = eco.correctBoundaryChoices.includes(i);
       let cls = 'boundary-btn';
+      let statusText = 'Tap to mark this boundary';
       if (boundaryResolved) {
-        if (eco.correctBoundaryChoices.includes(i)) cls += ' correct';
-        else if (selected) cls += ' incorrect';
+        if (correctChoice) { cls += ' correct'; statusText = 'Correct/revealed boundary evidence'; }
+        else if (selected) { cls += ' incorrect'; statusText = 'Your marked choice'; }
+        else { statusText = 'Other boundary'; }
       } else if (selected) {
         cls += ' selected';
+        statusText = 'Your current marked choice';
       }
       const disabled = boundaryResolved ? 'disabled' : '';
       const pressed = selected ? 'true' : 'false';
-      return `<button type="button" class="${cls}" data-index="${i}" aria-pressed="${pressed}" ${disabled}>${esc(label)}</button>`;
+      return `<button type="button" class="${cls}" data-index="${i}" aria-pressed="${pressed}" ${disabled}><span>${esc(label)}</span><br><span class="layer-meta">${esc(statusText)}</span></button>`;
     }).join('');
     els['boundary-choices'].querySelectorAll('.boundary-btn').forEach(btn => {
       btn.addEventListener('click', () => onBoundaryChoice(Number(btn.dataset.index)));
@@ -447,6 +507,7 @@
       setBoundaryFeedback(`Not the best-supported location yet. Compare the layer annotations for changes in abundance and diversity, then try again. ${remaining} attempt${remaining === 1 ? '' : 's'} remaining.`, 'info');
     }
     renderBoundaryChoices();
+    renderLayerList();
     renderAttemptStatus();
     updateSceneBoundary();
   }
@@ -547,11 +608,13 @@
   function startVisualisation(run) {
     clearVizTimer();
     vizStep = 0;
+    renderSimTimeline(0);
     renderVizFrame(run, 0);
     vizTimer = setInterval(() => {
       vizStep += 1;
       if (vizStep > SIM_STEPS) {
         clearVizTimer();
+        renderSimTimeline(SIM_STEPS);
         els['viz-status'].textContent = `Visualisation complete for ${run.factorLabel} (${run.rateText}, ${run.severityText}). Resulting fossil layers and survival are shown below and added to comparisons.`;
         return;
       }
@@ -560,6 +623,7 @@
   }
 
   function renderVizFrame(run, step) {
+    renderSimTimeline(step);
     const factor = FACTORS[run.factorId];
     const point = step === 0 ? { stress: 0, diversity: run.startDiversity, step: 0 } : run.timeline[step - 1];
     const pct = clamp(Math.round((point.stress / 120) * 100), 0, 100);
@@ -570,6 +634,7 @@
     const changeDesc = step === 0
       ? 'Landscape before major change: conditions are relatively stable.'
       : `Landscape responding to ${factor.label.toLowerCase()}: ${run.rateText.toLowerCase()}, ${run.severityText.toLowerCase()}.`;
+    const bioPct = Math.round((point.diversity / Math.max(currentEcosystem.species.length, 1)) * 100);
 
     els['landscape-viz'].innerHTML = `
       <div class="viz-scene">
@@ -595,13 +660,14 @@
         </div>
         <div class="indicator-card">
           <span class="indicator-label">Biodiversity in simulated sample</span>
-          <div class="indicator-value"><strong>${point.diversity}</strong> species group${point.diversity === 1 ? '' : 's'} present at this stage</div>
+          <div class="indicator-bar" aria-hidden="true"><div class="indicator-fill" style="width:${bioPct}%;background:linear-gradient(90deg,#6a8f63,#2f6b4f)"></div></div>
+          <div class="indicator-value"><strong>${point.diversity}</strong> of ${currentEcosystem.species.length} species groups present (${bioPct}%)</div>
         </div>
       </div>`;
     if (step === 0) {
-      els['viz-status'].textContent = 'Automatic visualisation starting: landscape and indicators will update stage by stage.';
+      els['viz-status'].textContent = 'Automatic visualisation starting: landscape, gauges, and timeline will update stage by stage.';
     } else {
-      els['viz-status'].textContent = `Showing stage ${step} of ${SIM_STEPS}: ${factor.indicatorLabel.toLowerCase()} at ${pct}% with biodiversity ${point.diversity}.`;
+      els['viz-status'].textContent = `Showing stage ${step} of ${SIM_STEPS}: ${factor.indicatorLabel.toLowerCase()} at ${pct}% with biodiversity ${point.diversity} of ${currentEcosystem.species.length}.`;
     }
   }
 
@@ -619,12 +685,19 @@
   }
 
   function renderSurvivalList(run) {
+    const total = Math.max(run.survival.length, 1);
+    const survived = run.survival.filter(sp => sp.survived).length;
+    const pct = Math.round((survived / total) * 100);
     const items = run.survival.map(sp => `<li class="species-item ${sp.survived ? 'survived' : 'lost'}">
       <span class="swatch" style="background:${sp.color}"></span>
-      <div><div><strong>${esc(sp.name)}</strong> — <span class="status">${sp.survived ? 'Survived in simulated samples' : 'Lost from later simulated samples'}</span></div>
+      <div><div><strong>${esc(sp.name)}</strong> — <span class="status">${sp.survived ? 'Survived ✓' : 'Lost ✕'}</span></div>
       <div class="panel-help">${esc(sp.reason)}</div></div>
     </li>`).join('');
     return `<p><strong>Run settings:</strong> <span class="tag">${esc(run.factorLabel)}</span> ${esc(run.rateText)} (rate ${run.rate}), ${esc(run.severityText)} (severity ${run.severity}).</p>
+      <div class="compare-visuals">
+        <div><strong>Survival indicator:</strong> ${survived} of ${total} species groups (${pct}%)</div>
+        <div class="indicator-bar" aria-hidden="true"><div class="indicator-fill" style="width:${pct}%;background:linear-gradient(90deg,#6a8f63,#2f6b4f)"></div></div>
+      </div>
       <ul class="species-list">${items}</ul>`;
   }
 
@@ -659,32 +732,44 @@
 
   function renderMiniLayers(layers) {
     const shown = layers.slice().reverse();
-    return `<div class="mini-layers">${shown.map(l => {
+    return `<div class="mini-layer-stack">${shown.map(l => {
       const stats = layerStats(l, currentEcosystem);
       const present = currentEcosystem.species.filter(sp => (l.fossils[sp.id] || 0) > 0).map(sp => sp.name);
-      const list = present.length ? esc(present.join(', ')) : 'No fossil groups in this simulated sample';
-      return `<div class="mini-layer"><strong>${esc(l.name)}</strong>
-        <div class="layer-meta">Annotated abundance: ${esc(l.abundanceLabel)} · diversity: ${esc(l.diversityLabel)} (${stats.diversity} groups)</div>
-        <div class="layer-meta">${list}</div></div>`;
+      const list = present.length ? esc(present.join(', ')) : 'No fossil groups visible';
+      const ab = levelScore(l.abundanceLabel), dv = levelScore(l.diversityLabel);
+      return `<div class="mini-layer">
+        <strong>${esc(l.name)}</strong>
+        <div class="mini-bars">
+          <div class="mini-bar-row"><span>Abundance</span><div class="meter-track" aria-hidden="true"><div class="meter-fill" style="width:${ab}%"></div></div><span>${esc(l.abundanceLabel)}</span></div>
+          <div class="mini-bar-row"><span>Diversity</span><div class="meter-track" aria-hidden="true"><div class="meter-fill" style="width:${dv}%"></div></div><span>${stats.diversity} groups</span></div>
+        </div>
+        <div class="layer-meta">${list}</div>
+      </div>`;
     }).join('')}</div>`;
   }
 
   function renderComparison() {
     if (!runHistory.length) {
-      els['run-comparison'].innerHTML = '<p class="empty-state">No saved runs yet. Run a simulation to compare results side by side. Results are cleared when you reset or close the page.</p>';
+      els['run-comparison'].innerHTML = '<p class="empty-state">No saved runs yet. Run a simulation to compare results side by side on this visual board. Results are cleared when you reset or close the page.</p>';
       return;
     }
     els['run-comparison'].innerHTML = runHistory.map((entry, i) => {
       const run = entry.result;
+      const total = currentEcosystem.species.length;
+      const survived = run.finalDiversity;
+      const pct = Math.round((survived / Math.max(total, 1)) * 100);
+      const survivalBars = run.survival.map(sp => `<div class="mini-bar-row"><span>${esc(shortName(sp.name))}</span><div class="meter-track" aria-hidden="true"><div class="meter-fill" style="width:${sp.survived ? 100 : 15}%;${sp.survived ? '' : 'background:linear-gradient(90deg,#b97a7a,#8a2432);'}"></div></div><span>${sp.survived ? 'survived' : 'lost'}</span></div>`).join('');
       return `<article class="run-card" aria-label="Run ${i + 1}">
         <h3>Run ${i + 1}: ${esc(run.factorLabel)}</h3>
         <p class="run-meta"><strong>Ecosystem:</strong> ${esc(run.ecosystemName)}</p>
-        <p class="run-meta"><strong>Rate:</strong> ${run.rate} (${esc(run.rateText)}) · <strong>Severity:</strong> ${run.severity} (${esc(run.severityText)})</p>
-        <p class="run-meta"><strong>Surviving groups:</strong> ${run.finalDiversity} of ${currentEcosystem.species.length} (from ${run.startDiversity} at start)</p>
+        <p class="run-meta"><strong>Settings:</strong> rate ${run.rate} (${esc(run.rateText)}), severity ${run.severity} (${esc(run.severityText)})</p>
+        <div class="compare-visuals">
+          <div><strong>Survival indicator:</strong> ${survived} of ${total} groups (${pct}%)</div>
+          <div class="indicator-bar" aria-hidden="true"><div class="indicator-fill" style="width:${pct}%;background:linear-gradient(90deg,#6a8f63,#2f6b4f)"></div></div>
+          <div class="mini-bars">${survivalBars}</div>
+        </div>
         ${renderGraph(run)}
-        <h4>Survival summary</h4>
-        <ul class="annotation-list">${run.survival.map(sp => `<li><strong>${esc(sp.name)}:</strong> ${sp.survived ? 'survived' : 'lost'}</li>`).join('')}</ul>
-        <h4>Resulting fossil layers</h4>
+        <h4>Resulting fossil layer stack (visual)</h4>
         ${renderMiniLayers(run.generatedLayers)}
       </article>`;
     }).join('');
@@ -701,6 +786,33 @@
     renderLatestResult(result);
     renderComparison();
     startVisualisation(result);
+  }
+
+  function updateSliderLabels() {
+    const r = Number(els['rate-slider'].value);
+    const s = Number(els['severity-slider'].value);
+    els['rate-value'].textContent = r;
+    els['severity-value'].textContent = s;
+    els['rate-label'].textContent = rateDescriptor(r);
+    els['severity-label'].textContent = severityDescriptor(s);
+    if (els['rate-gauge']) els['rate-gauge'].style.width = r + '%';
+    if (els['severity-gauge']) els['severity-gauge'].style.width = s + '%';
+  }
+
+  function renderSimTimeline(activeStep) {
+    if (!els['sim-timeline']) return;
+    if (activeStep == null) {
+      els['sim-timeline'].innerHTML = '<p class="empty-state">Run a simulation to see the stage-by-stage visual timeline.</p>';
+      return;
+    }
+    const steps = [{ n: 0, label: 'Start' }].concat(Array.from({ length: SIM_STEPS }, (_, i) => ({ n: i + 1, label: `Stage ${i + 1}` })));
+    els['sim-timeline'].innerHTML = steps.map(s => {
+      let cls = 'timeline-step';
+      if (s.n === activeStep) cls += ' active';
+      else if (s.n < activeStep) cls += ' done';
+      const marker = s.n < activeStep ? '✓ ' : (s.n === activeStep ? '▶ ' : '');
+      return `<div class="${cls}" aria-label="${marker}${esc(s.label)}${s.n === activeStep ? ' (current)' : ''}">${marker}${esc(s.label)}</div>`;
+    }).join('');
   }
 
   function resetAll() {
@@ -721,21 +833,13 @@
     els['landscape-viz'].innerHTML = '<p class="empty-state">Run an automatic visualisation to see the changing landscape.</p>';
     els['indicator-viz'].innerHTML = '';
     els['viz-status'].textContent = '';
+    renderSimTimeline(null);
     renderLatestResult(null);
     renderBoundaryChoices();
     renderLayerList();
     renderLayerDetails();
     renderComparison();
     updateScene();
-  }
-
-  function updateSliderLabels() {
-    const r = Number(els['rate-slider'].value);
-    const s = Number(els['severity-slider'].value);
-    els['rate-value'].textContent = r;
-    els['severity-value'].textContent = s;
-    els['rate-label'].textContent = rateDescriptor(r);
-    els['severity-label'].textContent = severityDescriptor(s);
   }
 
   function renderAll() {
@@ -750,6 +854,7 @@
     renderAttemptStatus();
     renderBoundaryChoices();
     if (!els['landscape-viz'].innerHTML) els['landscape-viz'].innerHTML = '<p class="empty-state">Run an automatic visualisation to see the changing landscape.</p>';
+    if (els['sim-timeline'] && !els['sim-timeline'].innerHTML) renderSimTimeline(null);
     renderLatestResult(runHistory.length ? runHistory[runHistory.length - 1].result : null);
     renderComparison();
     updateSliderLabels();
@@ -967,6 +1072,7 @@
     cacheEls();
     initEcosystemSelect();
     bindEvents();
+    renderSimTimeline(null);
     setEcosystem(ECOSYSTEMS[0]);
     els['landscape-viz'].innerHTML = '<p class="empty-state">Run an automatic visualisation to see the changing landscape.</p>';
     renderLatestResult(null);
