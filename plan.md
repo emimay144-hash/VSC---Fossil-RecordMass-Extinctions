@@ -1,72 +1,38 @@
-## Development plan
+## Revised development plan
 
-**Core experience:** Students inspect a simplified 3D rock sequence, use fossil patterns to identify a likely extinction boundary, then change the rate and severity of environmental change and observe how the fossil record might appear afterward.
+The tool will feature **five distinct fictional ecosystems**, each with at least five inspectable rock layers. Students use realistic-looking rocks and fossils, with annotated diagrams that help them infer changes in fossil abundance and diversity without relying on exact counts.
 
-### 1. Define the learning flow
+### Student flow
 
-Build the tool around a short, unguided investigation:
+1. **Choose an ecosystem** and explore its strata.
+2. **Inspect at least five layers**, comparing the fossil diagrams and their annotations.
+3. **Tap or click where they think the extinction boundary lies.** In some scenarios the evidence will point to a clear boundary; in others, the change may span several layers to represent uncertainty.
+4. **Try again if needed.** Reveal the correct answer after five attempts, with a brief explanation.
+5. **Set up a simulation** by choosing an environmental factor and adjusting how quickly and severely it changes.
+6. **Watch an automatic visualisation** with both a changing landscape and labelled environmental indicators.
+7. **Compare runs** side by side, showing the surviving species, biodiversity over time, and resulting fossil layers.
 
-1. **Explore the strata:** Rotate and zoom a geological cross-section; select layers to inspect their fossils.
-2. **Look for a change:** Compare fossil abundance and diversity in older and younger layers.
-3. **Mark the boundary:** Ask students to identify where a mass extinction likely occurred.
-4. **Run a simulation:** Adjust how quickly and severely the environment changes.
-5. **Compare outcomes:** See which species survive, how biodiversity changes, and how the resulting layers record that change.
+### Scenario and simulation design
 
-Keep instructions available but unobtrusive, so students can explore freely while still understanding the task.
+Make the five ecosystems visually and biologically distinct, with different starting biodiversity and species traits. Allow students to choose the environmental factor that changes, then adjust its rate and severity.
 
-### 2. Design the geological cross-section
+Keep the simulation visually clear: the environment changes on screen, indicators show what is changing, and annotations connect those changes to species survival and the fossil layers. Make the same underlying scenario data drive the animation, diagrams, and comparison views so they remain consistent.
 
-Represent strata as stacked, selectable sedimentary layers. Each layer should show a small, consistent sample of fossil groups, with visual cues for:
+### Interface and classroom use
 
-- **Abundance:** how many fossil specimens appear in a layer.
-- **Diversity:** how many different species or groups appear.
-- **Layer order:** older layers below younger layers in the uncomplicated example.
-- **Extinction boundary:** a clear point where fossil diversity or abundance drops.
+- Use realistic rocks and fossils, while keeping labels and diagrams clean enough to read on small screens.
+- Provide a prominent reset button.
+- Keep results temporary: clear them when students reset or close the page.
+- Make all layers inspectable, with touch-friendly controls for phones and tablets.
+- Keep essential information available in text and annotations, not only through visual appearance or colour.
 
-Use labels and a simple side-on view as well as 3D interaction; the scientific comparison should remain understandable even if a student does not rotate the scene. Present fossil counts as evidence from a sample, not a perfect census of all past life. The fossil record is incomplete and preservation varies, so a drop in fossils should be interpreted as a clue rather than automatic proof of an extinction. <citation src="9"></citation>
+### Build order
 
-### 3. Build the fictional scenarios
+1. Prototype one ecosystem with five layers, annotated diagrams, and boundary selection.
+2. Add retry logic, including answer reveal after five attempts and support for uncertain boundaries.
+3. Add the other four ecosystems and their distinct species and fossil patterns.
+4. Build environmental-factor controls and automatic simulations.
+5. Add side-by-side comparisons of survival, biodiversity, and fossil layers.
+6. Test with students and refine the diagrams, instructions, reset behaviour, and mobile layout.
 
-Create several fictional ecosystems with distinct, easy-to-recognise species groups. Give each group different tolerances to environmental change—for example, some are more vulnerable to a rapid change, while others can survive a wider range of conditions.
-
-Let students control two main variables:
-
-- **Rate:** how quickly environmental conditions change.
-- **Severity:** how far conditions move from the starting state.
-
-Show the setting in plain language, such as “slow change” or “large change,” alongside the control. Keep the scenario fictional and make clear that it demonstrates a simplified model, not a prediction of how real organisms would respond.
-
-### 4. Implement the simulation and visual feedback
-
-Use one underlying scenario model to calculate species survival and biodiversity over time. Update the fossil layers from those results, then show:
-
-- a **species-survival display**;
-- a **biodiversity-over-time graph**;
-- the newly formed strata, with fossil abundance and diversity reflected in each layer.
-
-Include a reset button and a way to compare the starting conditions with the result. Keep the simulation reproducible: the same scenario and settings should produce the same outcome, so students can compare the effect of changing one variable at a time.
-
-### 5. Build the Three.js interface for different screens
-
-Use Three.js for the cross-section and interactive fossils, with ordinary HTML interface controls and charts around it. Design a responsive layout that works with mouse, touch, and keyboard input; test the canvas resizing and camera framing on phone-sized screens as well as tablets and computers. Three.js provides the rendering and scene tools for this kind of 3D model; the interface and controls still need to be designed and tested for the target devices. <citation src="1,3"></citation>
-
-Make the 3D scene useful rather than essential: layer details, counts, labels, and the extinction boundary should also be accessible through the interface, not only through colour or precise touch gestures.
-
-### 6. Validate the teaching tool
-
-Test with a small group of Year 10 students and check whether they can:
-
-- identify the likely extinction boundary from the layers;
-- explain their decision using fossil abundance or diversity;
-- describe how changing rate or severity affected survival;
-- distinguish a model’s simplified results from a complete account of real extinctions.
-
-Also test on common phone, tablet, and computer screen sizes, and check loading time, readable text, keyboard access, colour contrast, and touch-target size.
-
-### Suggested build milestones
-
-1. **Prototype:** one cross-section, selectable layers, and a manual boundary-identification task.
-2. **Simulation:** fictional species, rate and severity controls, survival outcomes, graph, and generated fossil layers.
-3. **Classroom-ready release:** multiple scenarios, responsive and accessible controls, student-facing prompts, teacher setup notes, and testing fixes.
-
-**A useful first milestone is a clickable prototype of the strata and boundary-identification activity.** It tests the main learning goal before investing in the full simulation.
+**Key design check:** Ask students to explain what evidence in the diagrams led them to choose a boundary. That will show whether the annotations support inference rather than simply giving away the answer.

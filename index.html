@@ -9,117 +9,119 @@
 <body>
   <a class="skip-link" href="#main-content">Skip to main content</a>
   <header class="app-header">
-    <div>
-      <h1>Fossil Layers and Mass Extinction Explorer</h1>
-      <p class="subtitle">Investigate fossil patterns in rock layers, identify a likely extinction boundary, and test how environmental change can affect survival.</p>
+    <div class="header-row">
+      <div>
+        <h1>Fossil Layers and Mass Extinction Explorer</h1>
+        <p class="subtitle">Explore fictional ecosystems, inspect rock layers and fossil diagrams, infer possible extinction boundaries, and test how environmental change can affect survival.</p>
+      </div>
+      <div class="header-actions">
+        <button id="reset-all" type="button" class="reset-prominent">Reset everything</button>
+      </div>
     </div>
   </header>
 
   <main id="main-content" class="app-layout">
-    <section class="panel scene-panel" aria-labelledby="scene-heading">
-      <div class="panel-header">
-        <h2 id="scene-heading">Rock sequence</h2>
-        <p id="scene-help" class="panel-help">Drag to rotate, scroll or pinch to zoom, and select a layer to inspect it. You can also choose layers from the list below the view.</p>
-      </div>
-      <div class="scene-wrap">
-        <div id="three-root" class="three-root" aria-label="3D rock layer model"></div>
-        <div class="scene-legend" aria-label="Scene legend">
-          <p><strong>Older layers</strong> are lower. <strong>Younger layers</strong> are higher.</p>
-          <p>Fossil counts show a sample from each layer, not a complete record of past life.</p>
-        </div>
-      </div>
-      <div class="layer-controls" aria-labelledby="layer-list-heading">
-        <h3 id="layer-list-heading">Layer list</h3>
-        <p class="panel-help">Select a layer to view fossil evidence. Buttons work with mouse, touch, or keyboard.</p>
-        <div id="layer-list" class="layer-list" role="list"></div>
-      </div>
-    </section>
-
-    <section class="panel controls-panel" aria-labelledby="investigation-heading">
-      <h2 id="investigation-heading">Investigation</h2>
+    <section class="panel ecosystem-panel" aria-labelledby="ecosystem-heading">
+      <h2 id="ecosystem-heading">1. Choose an ecosystem</h2>
+      <label for="ecosystem-select">Fictional ecosystem</label>
+      <select id="ecosystem-select"></select>
+      <p id="ecosystem-description" class="panel-help"></p>
+      <p id="ecosystem-traits" class="panel-help"></p>
 
       <details class="instructions" open>
-        <summary>How to explore (optional)</summary>
+        <summary>Student flow</summary>
         <ol>
-          <li><strong>Explore the strata:</strong> Inspect layers and compare fossil samples.</li>
-          <li><strong>Look for a change:</strong> Notice where abundance or diversity drops.</li>
-          <li><strong>Mark the boundary:</strong> Choose where a mass extinction likely occurred.</li>
-          <li><strong>Run a simulation:</strong> Change how quickly and severely conditions shift.</li>
-          <li><strong>Compare outcomes:</strong> See survival, biodiversity, and newly formed layers.</li>
+          <li><strong>Choose an ecosystem</strong> and explore its strata.</li>
+          <li><strong>Inspect at least five layers</strong>, comparing fossil diagrams and annotations.</li>
+          <li><strong>Tap or click</strong> where you think the extinction boundary lies. Evidence may be clear in some ecosystems and uncertain in others.</li>
+          <li><strong>Try again if needed.</strong> The answer is revealed after five attempts, with a brief explanation.</li>
+          <li><strong>Set up a simulation</strong> by choosing an environmental factor and adjusting rate and severity.</li>
+          <li><strong>Watch an automatic visualisation</strong> with a changing landscape and labelled indicators.</li>
+          <li><strong>Compare runs</strong> side by side: survival, biodiversity over time, and resulting fossil layers.</li>
         </ol>
-        <p class="note">This is a simplified fictional model. Fossil samples are clues, and results are not predictions for real organisms.</p>
+        <p class="note">All ecosystems, species, and results are fictional and simplified. Fossils are clues; preservation varies and the record is incomplete. Results are temporary and clear when you reset or close the page.</p>
       </details>
+    </section>
 
-      <div class="control-group">
-        <label for="scenario-select">Fictional scenario</label>
-        <select id="scenario-select"></select>
-        <p id="scenario-description" class="panel-help"></p>
+    <section class="panel strata-panel" aria-labelledby="strata-heading">
+      <div class="panel-header">
+        <h2 id="strata-heading">2–3. Inspect strata and mark a boundary</h2>
+        <p class="panel-help">Inspect each layer's annotated diagram and rock sample. Older layers are lower; younger layers are higher. Use the annotations to infer changes in fossil abundance and diversity rather than relying on exact counts.</p>
+      </div>
+
+      <div class="scene-wrap">
+        <h3 id="scene-heading">Rock cross-section</h3>
+        <div id="three-root" class="three-root" aria-label="3D rock cross-section showing layers and fossil shapes"></div>
+        <p class="panel-help scene-fallback-note">If the 3D view is unavailable, use the layer diagrams and boundary buttons below — all essential information is provided there.</p>
+      </div>
+
+      <div class="layer-controls" aria-labelledby="layer-list-heading">
+        <h3 id="layer-list-heading">Inspectable layers</h3>
+        <div id="layer-list" class="layer-list" role="list"></div>
       </div>
 
       <section class="subpanel" aria-labelledby="layer-details-heading">
-        <h3 id="layer-details-heading">Selected layer evidence</h3>
+        <h3 id="layer-details-heading">Selected layer diagram and annotations</h3>
         <div id="layer-details" class="layer-details" aria-live="polite"></div>
       </section>
 
       <section class="subpanel" aria-labelledby="boundary-heading">
-        <h3 id="boundary-heading">Mark the extinction boundary</h3>
-        <p class="panel-help">Choose the boundary where fossil evidence suggests a mass extinction likely occurred. The boundary marks the change between an older layer below and a younger layer above.</p>
-        <label for="boundary-select">Boundary location</label>
-        <select id="boundary-select"></select>
-        <div class="button-row">
-          <button id="check-boundary" type="button">Check boundary</button>
-          <button id="clear-boundary" type="button" class="secondary">Clear mark</button>
-        </div>
+        <h3 id="boundary-heading">Tap or click the extinction boundary</h3>
+        <p class="panel-help">Choose the place where the evidence suggests a major change in fossil life. In some ecosystems the boundary is clear; in others the change may span several layers, so a range of nearby choices can be reasonable.</p>
+        <p id="attempt-status" class="attempt-status" aria-live="polite"></p>
+        <div id="boundary-choices" class="boundary-choices" role="group" aria-label="Boundary choices"></div>
         <div id="boundary-feedback" class="feedback" aria-live="polite"></div>
-      </section>
-
-      <section class="subpanel" aria-labelledby="simulation-heading">
-        <h3 id="simulation-heading">Environmental change simulation</h3>
-        <p class="panel-help">Adjust the rate and severity of a fictional environmental change. The same settings always produce the same result for a scenario.</p>
-
-        <div class="slider-field">
-          <label for="rate-slider">Rate of change: <span id="rate-value"></span></label>
-          <input id="rate-slider" type="range" min="0" max="100" value="35" step="5">
-          <p id="rate-label" class="setting-label"></p>
-        </div>
-
-        <div class="slider-field">
-          <label for="severity-slider">Severity of change: <span id="severity-value"></span></label>
-          <input id="severity-slider" type="range" min="0" max="100" value="40" step="5">
-          <p id="severity-label" class="setting-label"></p>
-        </div>
-
-        <div class="button-row">
-          <button id="run-simulation" type="button">Run simulation</button>
-          <button id="reset-simulation" type="button" class="secondary">Reset to starting conditions</button>
-        </div>
-        <p class="note">Simulation results show a simplified model of how fossil layers might record change. They do not show a complete account of real extinctions.</p>
       </section>
     </section>
 
-    <section class="panel results-panel" aria-labelledby="results-heading">
-      <h2 id="results-heading">Outcomes</h2>
+    <section class="panel sim-panel" aria-labelledby="simulation-heading">
+      <h2 id="simulation-heading">4–5. Environmental change simulation</h2>
+      <p class="panel-help">Choose an environmental factor, adjust how quickly and severely it changes, then watch the automatic visualisation. The same underlying scenario data drives the landscape, indicators, diagrams, and comparisons.</p>
 
-      <section class="subpanel" aria-labelledby="survival-heading">
-        <h3 id="survival-heading">Species survival</h3>
-        <div id="survival-display" class="survival-display" aria-live="polite"></div>
+      <div class="control-group">
+        <label for="factor-select">Environmental factor</label>
+        <select id="factor-select"></select>
+        <p id="factor-description" class="panel-help"></p>
+      </div>
+
+      <div class="slider-field">
+        <label for="rate-slider">Rate of change: <span id="rate-value"></span></label>
+        <input id="rate-slider" type="range" min="0" max="100" value="35" step="5">
+        <p id="rate-label" class="setting-label"></p>
+      </div>
+
+      <div class="slider-field">
+        <label for="severity-slider">Severity of change: <span id="severity-value"></span></label>
+        <input id="severity-slider" type="range" min="0" max="100" value="40" step="5">
+        <p id="severity-label" class="setting-label"></p>
+      </div>
+
+      <div class="button-row">
+        <button id="run-simulation" type="button">Run automatic visualisation</button>
+      </div>
+
+      <section class="subpanel" aria-labelledby="viz-heading">
+        <h3 id="viz-heading">Automatic visualisation</h3>
+        <div id="landscape-viz" class="landscape-viz" aria-live="polite"></div>
+        <div id="indicator-viz" class="indicator-viz" aria-live="polite"></div>
+        <div id="viz-status" class="panel-help" aria-live="polite"></div>
       </section>
 
-      <section class="subpanel" aria-labelledby="graph-heading">
-        <h3 id="graph-heading">Biodiversity over time</h3>
-        <p class="panel-help">Biodiversity means how many different species groups appear in the fossil sample at each time step.</p>
-        <div id="biodiversity-graph" class="graph-wrap"></div>
+      <section class="subpanel" aria-labelledby="latest-result-heading">
+        <h3 id="latest-result-heading">Latest run: survival and resulting layers</h3>
+        <div id="latest-result" class="latest-result" aria-live="polite"></div>
       </section>
+    </section>
 
-      <section class="subpanel" aria-labelledby="comparison-heading">
-        <h3 id="comparison-heading">Starting conditions and simulated layers</h3>
-        <div id="comparison-display" class="comparison-display" aria-live="polite"></div>
-      </section>
+    <section class="panel compare-panel" aria-labelledby="compare-heading">
+      <h2 id="compare-heading">6. Compare runs side by side</h2>
+      <p class="panel-help">Each time you run the simulation, the result is saved here for comparison until you reset or close the page. Compare environmental settings, survival, biodiversity over time, and resulting fossil layers.</p>
+      <div id="run-comparison" class="run-comparison" aria-live="polite"></div>
     </section>
   </main>
 
   <footer class="app-footer">
-    <p><strong>Evidence note:</strong> A drop in fossils can be a clue to extinction, but preservation varies and the fossil record is incomplete.</p>
+    <p><strong>Evidence note:</strong> A drop in fossil abundance or diversity can suggest extinction, but preservation varies and the fossil record is incomplete. Ask: what evidence in the diagrams led you to choose a boundary?</p>
   </footer>
 
   <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
